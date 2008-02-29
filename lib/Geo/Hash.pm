@@ -10,11 +10,11 @@ Geo::Hash - Encode / decode geohash.org locations.
 
 =head1 VERSION
 
-This document describes Geo::Hash version 0.01
+This document describes Geo::Hash version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
