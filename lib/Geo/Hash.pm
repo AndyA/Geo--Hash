@@ -10,11 +10,11 @@ Geo::Hash - Encode / decode geohash.org locations.
 
 =head1 VERSION
 
-This document describes Geo::Hash version 0.01
+This document describes Geo::Hash version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
@@ -58,6 +58,32 @@ sub _mid {
     return ( $ar->[$wh][0] + $ar->[$wh][1] ) / 2;
 }
 
+# The number of bits necessary to represent the specified number of
+# decimal digits
+sub _d2b { int( shift() * 3.32192809488736 + 1 ) }
+
+sub _bits_for_number {
+    my $n = shift;
+    return 0 unless $n =~ s/.*\.//;
+    return _d2b( length $n );
+}
+
+=head2 C<< precision >>
+
+Infer a suitable precision (number of character in hash) for a given
+lat, lon pair.
+
+    my $prec = $gh->precision( $lat, $lon );
+
+=cut
+
+sub precision {
+    my ( $self, $lat, $lon ) = @_;
+    my $lab = _bits_for_number( $lat ) + 8;
+    my $lob = _bits_for_number( $lon ) + 9;
+    return int( ( ( $lab > $lob ? $lab : $lob ) + 1 ) / 2.5 );
+}
+
 =head2 C<< encode >>
 
 Encode a lat, long pair into a geohash.
@@ -69,8 +95,8 @@ You may optionally supply the length of the desired geohash:
     # Very precise
     my $hash = $gh->encode( $lat, $lon, 10 );
 
-If the precision argument is omitted an eight character geohash will
-be created.
+If the precision argument is omitted C<precision> will be used to
+provide a default.
 
 =cut
 
@@ -78,7 +104,7 @@ sub encode {
     croak "encode needs two or three arguments"
       unless @_ >= 3 && @_ <= 4;
     my ( $self, @pos ) = splice @_, 0, 3;
-    my $prec = shift || 8;
+    my $prec = shift || $self->precision( @pos );
     my $int  = [ [ 90, -90 ], [ 180, -180 ] ];
     my $flip = 1;
     my @enc  = ();
@@ -89,23 +115,29 @@ sub encode {
             my $bit = $pos[$flip] >= $mid ? 1 : 0;
             $bits = ( ( $bits << 1 ) | $bit );
             $int->[$flip][$bit] = $mid;
-            $flip = 1 - $flip;
+            $flip ^= 1;
         }
         push @enc, $ENC[$bits];
     }
     return join '', @enc;
 }
 
-=head2 C<< decode >>
+=head2 C<< decode_to_interval >>
 
-Decode a geohash into a lat, long pair.
+Like C<decode> but instead of returning a pair of coordinates returns
+the interval for each coordinate. This gives some indication of how
+precisely the original hash specified the location.
 
-    my ( $lat, $lon ) = $gh->decode( $hash );
+The return value is a pair of array refs. Each referred to array
+contains the upper and lower bounds for each coordinate.
+
+    my ( $lat_range, $lon_range ) = $gh->decode_to_interval( $hash );
+    # $lat_range and $lon_range are references to two element arrays
 
 =cut
 
-sub decode {
-    croak "decode needs one argument"
+sub decode_to_interval {
+    croak "Needs one argument"
       unless @_ == 2;
     my ( $self, $hash ) = @_;
 
@@ -117,7 +149,7 @@ sub decode {
             for ( 0 .. 4 ) {
                 $int->[$flip][ ( $bits & 16 ) >> 4 ]
                   = _mid( $int, $flip );
-                $flip = 1 - $flip;
+                $flip ^= 1;
                 $bits <<= 1;
             }
         }
@@ -126,7 +158,20 @@ sub decode {
         }
     }
 
-    return map { _mid( $int, $_ ) } 0 .. 1;
+    return @$int;
+}
+
+=head2 C<< decode >>
+
+Decode a geohash into a lat, long pair.
+
+    my ( $lat, $lon ) = $gh->decode( $hash );
+
+=cut
+
+sub decode {
+    my @int = shift->decode_to_interval( @_ );
+    return map { _mid( \@int, $_ ) } 0 .. 1;
 }
 
 1;
@@ -155,6 +200,8 @@ L<http://rt.cpan.org>.
 =head1 AUTHOR
 
 Andy Armstrong  C<< <andy@hexten.net> >>
+
+L<http://geohash.org/gcwrdtsvrfgr>
 
 =head1 LICENCE AND COPYRIGHT
 

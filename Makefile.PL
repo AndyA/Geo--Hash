@@ -1,5 +1,6 @@
+use 5.006001;
+
 use strict;
-use warnings;
 use ExtUtils::MakeMaker;
 
 eval 'use ExtUtils::MakeMaker::Coverage';
