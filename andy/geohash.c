@@ -81,6 +81,7 @@ _init_hash_to_bits( void ) {
         for ( ep = 0; _enc[ep]; ep++ ) {
             _dec[( int ) _enc[ep]] = ep;
         }
+        _dec_inited = 1;
     }
 }
 
