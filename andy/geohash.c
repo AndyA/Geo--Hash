@@ -12,7 +12,6 @@ static unsigned char _dec[256];
 static int _dec_inited = 0;
 
 /* The buffer must be at least len + 1 bytes long */
-
 char *
 encode_with_len( double lat, double lon, char *hash, size_t len ) {
     double interval[2][2] = { {90, -90}, {180, -180} };
