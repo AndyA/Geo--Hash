@@ -70,7 +70,7 @@ sub _bits_for_number {
 
 =head2 C<< precision >>
 
-Infer a suitable precision (number of character in hash) for a given
+Infer a suitable precision (number of characters in hash) for a given
 lat, lon pair.
 
     my $prec = $gh->precision( $lat, $lon );
