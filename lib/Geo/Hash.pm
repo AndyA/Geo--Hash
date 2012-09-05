@@ -2,6 +2,7 @@ package Geo::Hash;
 
 use warnings;
 use strict;
+use POSIX qw/ceil/;
 use Carp;
 
 =head1 NAME
@@ -58,14 +59,23 @@ sub _mid {
     return ( $ar->[$wh][0] + $ar->[$wh][1] ) / 2;
 }
 
-# The number of bits necessary to represent the specified number of
-# decimal digits
-sub _d2b { int( shift() * 3.32192809488736 + 1 ) }
-
-sub _bits_for_number {
+sub _num_of_decimal_places($) {
     my $n = shift;
     return 0 unless $n =~ s/.*\.//;
-    return _d2b( length $n );
+    return length $n;
+}
+
+sub _length_for_bits($$) {
+    my ($bits, $is_lat) = @_;
+    my $q = int($bits / 5);
+    my $r = $bits % 5;
+    if ($r == 0) {
+        return $q * 2;
+    } elsif ($r <= ($is_lat ? 2 : 3)) {
+        return $q * 2 + 1;
+    } else {
+        return $q * 2 + 2;
+    }
 }
 
 =head2 C<< precision >>
@@ -77,11 +87,16 @@ lat, lon pair.
 
 =cut
 
+use constant LOG2_10  => log(10)  / log(2);
+use constant LOG2_180 => log(180) / log(2);
+use constant LOG2_360 => log(360) / log(2);
 sub precision {
     my ( $self, $lat, $lon ) = @_;
-    my $lab = _bits_for_number( $lat ) + 8;
-    my $lob = _bits_for_number( $lon ) + 9;
-    return int( ( ( $lab > $lob ? $lab : $lob ) + 1 ) / 2.5 );
+    my $lab = ceil(_num_of_decimal_places($lat) * LOG2_10 + LOG2_180);
+    my $lob = ceil(_num_of_decimal_places($lon) * LOG2_10 + LOG2_360);
+    my $la_len = _length_for_bits($lab, 1);
+    my $lo_len = _length_for_bits($lob, 0);
+    return $la_len > $lo_len ? $la_len : $lo_len;
 }
 
 =head2 C<< encode >>
