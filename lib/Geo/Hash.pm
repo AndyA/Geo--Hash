@@ -4,6 +4,15 @@ use warnings;
 use strict;
 use Carp;
 
+use Exporter 'import';
+our @EXPORT_OK   = qw( ADJ_TOP ADJ_RIGHT ADJ_LEFT ADJ_BOTTOM );
+our %EXPORT_TAGS = (adjacent => \@EXPORT_OK);
+
+use constant ADJ_RIGHT  => 0;
+use constant ADJ_LEFT   => 1;
+use constant ADJ_TOP    => 2;
+use constant ADJ_BOTTOM => 3;
+
 =head1 NAME
 
 Geo::Hash - Encode / decode geohash.org locations.
@@ -173,6 +182,64 @@ sub decode {
     my @int = shift->decode_to_interval( @_ );
     return map { _mid( \@int, $_ ) } 0 .. 1;
 }
+
+=head2 C<< adjacent >>
+
+Returns the adjacent geohash. C<$where> denotes the direction, so if you
+want the block to the right of C<$hash>, you say:
+
+    use Geo::Hash qw(ADJ_RIGHT);
+
+    my $adjacent = $gh->adjacent( $hash, ADJ_RIGHT );
+
+=cut
+
+my @NEIGHBORS = (
+    [ "bc01fg45238967deuvhjyznpkmstqrwx", "p0r21436x8zb9dcf5h7kjnmqesgutwvy" ],
+    [ "238967debc01fg45kmstqrwxuvhjyznp", "14365h7k9dcfesgujnmqp0r2twvyx8zb" ],
+    [ "p0r21436x8zb9dcf5h7kjnmqesgutwvy", "bc01fg45238967deuvhjyznpkmstqrwx" ],
+    [ "14365h7k9dcfesgujnmqp0r2twvyx8zb", "238967debc01fg45kmstqrwxuvhjyznp" ]
+);
+
+my @BORDERS = (
+    [ "bcfguvyz", "prxz" ],
+    [ "0145hjnp", "028b" ],
+    [ "prxz", "bcfguvyz" ],
+    [ "028b", "0145hjnp" ]
+);
+
+sub adjacent {
+    my ( $self, $hash, $where ) = @_;
+    my $hash_len = length $hash;
+
+    croak "PANIC: hash too short!"
+        unless $hash_len >= 1;
+
+    my $base;
+    my $last_char;
+    my $type = $hash_len % 2;
+
+    if ( $hash_len == 1 ) {
+        $base      = '';
+        $last_char = $hash;
+    }
+    else {
+        ( $base, $last_char ) = $hash =~ /^(.+)(.)$/;
+        if ($BORDERS[$where][$type] =~ /$last_char/) {
+            my $tmp = $self->adjacent($base, $where);
+            substr($base, 0, length($tmp)) = $tmp;
+        }
+    }
+    return $base . $ENC[ index($NEIGHBORS[$where][$type], $last_char) ];
+}
+
+=head1 CONSTANTS
+
+=head2 ADJ_LEFT, ADJ_RIGHT, ADJ_TOP, ADJ_BOTTOM
+
+Used to specify the direction in C<adjacent()>
+
+=cut
 
 1;
 __END__
