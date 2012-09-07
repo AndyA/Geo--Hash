@@ -233,6 +233,59 @@ sub adjacent {
     return $base . $ENC[ index($NEIGHBORS[$where][$type], $last_char) ];
 }
 
+=head2 C<< neighbors >>
+
+Returns the list of neighbors (the blocks surrounding $hash)
+
+    my @list_of_geohashes = $gh->neighbors( $hash, $around, $offset )
+
+=cut
+
+sub neighbors {
+    my ( $self, $hash, $around, $offset ) = @_;
+    $around ||= 1;
+    $offset ||= 0;
+
+    my $last_hash = $hash;
+    my $i = 1;
+    while ( $offset-- > 0 ) {
+        my $top  = $self->adjacent( $last_hash, ADJ_TOP );
+        my $left = $self->adjacent( $top, ADJ_LEFT );
+        $last_hash = $left;
+        $i++;
+    }
+
+    my @list;
+    while ( $around-- > 0 ) {
+        my $max = 2 * $i - 1;
+        $last_hash = $self->adjacent( $last_hash, ADJ_TOP );
+        push @list, $last_hash;
+
+        for ( 0..( $max - 1 ) ) {
+            $last_hash = $self->adjacent( $last_hash, ADJ_RIGHT );
+            push @list, $last_hash;
+        }
+
+        for ( 0..$max ) {
+            $last_hash = $self->adjacent( $last_hash, ADJ_BOTTOM );
+            push @list, $last_hash;
+        }
+
+        for ( 0..$max ) {
+            $last_hash = $self->adjacent( $last_hash, ADJ_LEFT );
+            push @list, $last_hash;
+        }
+
+        for ( 0..$max ) {
+            $last_hash = $self->adjacent( $last_hash, ADJ_TOP );
+            push @list, $last_hash;
+        }
+        $i++;
+    }
+
+    return @list;
+}
+
 =head1 CONSTANTS
 
 =head2 ADJ_LEFT, ADJ_RIGHT, ADJ_TOP, ADJ_BOTTOM
